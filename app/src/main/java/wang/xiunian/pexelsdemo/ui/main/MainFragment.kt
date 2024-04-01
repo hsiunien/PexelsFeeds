@@ -72,6 +72,7 @@ class MainFragment : Fragment() {
                 ).show()
                 adapter.removeLoadingView()
                 scrollListener.setLoaded()
+                currentPage.decrementAndGet()
             }
         }
         viewModel.imageItems.observe(this.viewLifecycleOwner) {
