@@ -1,17 +1,16 @@
 package wang.xiunian.pexelsdemo.ui.main
 
-import android.content.Context
 import android.graphics.BlendMode
 import android.graphics.BlendModeColorFilter
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
-import android.util.DisplayMetrics
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.MarginLayoutParams
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -36,7 +35,9 @@ class FeedsAdapter(val eventMessage: (EventMessage) -> Unit) : RecyclerView.Adap
 
     private val items = mutableListOf<PhotosResponse?>()
 
-    private var isCached = false
+    var haveCachedData = false
+        private set
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return if (viewType == VIEW_TYPE_ITEM) {
             val itemView: View = LayoutInflater.from(parent.context)
@@ -47,13 +48,16 @@ class FeedsAdapter(val eventMessage: (EventMessage) -> Unit) : RecyclerView.Adap
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 progressBar.indeterminateDrawable.colorFilter =
-                    BlendModeColorFilter(Color.WHITE, BlendMode.SRC_ATOP)
+                    BlendModeColorFilter(Color.GRAY, BlendMode.SRC_ATOP)
             } else {
                 progressBar.indeterminateDrawable.setColorFilter(
-                    Color.WHITE,
+                    Color.GRAY,
                     PorterDuff.Mode.MULTIPLY
                 )
             }
+            val layoutParams =
+                MarginLayoutParams(MarginLayoutParams.MATCH_PARENT, MarginLayoutParams.WRAP_CONTENT)
+            progressBar.layoutParams = layoutParams
             LoadingViewHolder(progressBar)
         }
 
@@ -81,13 +85,19 @@ class FeedsAdapter(val eventMessage: (EventMessage) -> Unit) : RecyclerView.Adap
     }
 
 
-    fun addList(photosResponse: List<PhotosResponse>) {
-        items.addAll(photosResponse)
+    fun addList(photosResponse: List<PhotosResponse>, isCached: Boolean) {
+        if (isCached) {
+            items.addAll(0, photosResponse)
+        } else {
+            items.addAll(photosResponse)
+        }
+        this.haveCachedData = isCached
     }
 
     fun replaceList(photosResponse: List<PhotosResponse>) {
         items.clear()
         items.addAll(photosResponse)
+        haveCachedData = false
     }
 
     fun addLoading() {
@@ -122,13 +132,8 @@ class FeedviewHolder(rootView: View, val eventMessage: (EventMessage) -> Unit) :
         val vto = imageView.viewTreeObserver
         vto.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
             override fun onGlobalLayout() {
-
                 imageView.viewTreeObserver.removeOnGlobalLayoutListener(this)
-
-
                 val imageViewWidth = imageView.width
-
-
                 val imageViewHeight = 627 / 1200f * imageViewWidth
                 imageView.layoutParams.height = imageViewHeight.toInt()
                 imageView.requestLayout()
@@ -141,11 +146,6 @@ class FeedviewHolder(rootView: View, val eventMessage: (EventMessage) -> Unit) :
             eventMessage.invoke(EventMessage.ItemClickEvent(data))
         }
         authNameTv.text = data.photographer
-        // If we have some rules for adapting preview images,
-        // we can dynamically calculate the width and height needed for the images here.
-//        imageView.updateLayoutParams<FrameLayout.LayoutParams> {
-//            height = getImageHeight(imageView.context)
-//        }
         Log.d(TAG, "setData: ${data.src}")
         Glide.with(imageView.context)
             .setDefaultRequestOptions(requestOptions)
@@ -157,12 +157,3 @@ class FeedviewHolder(rootView: View, val eventMessage: (EventMessage) -> Unit) :
 
 class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
-fun getImageHeight(context: Context): Int {
-    val displayMetrics: DisplayMetrics = context.resources.getDisplayMetrics()
-    val screenWidth = displayMetrics.widthPixels
-    val scale = context.resources.displayMetrics.density
-    val padding = (24f * scale + 0.5f).toInt()
-    val ratio = 627 / 1200f
-    return (ratio * (screenWidth - padding)).toInt()
-
-}

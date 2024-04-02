@@ -76,14 +76,16 @@ class MainFragment : Fragment() {
             }
         }
         viewModel.imageItems.observe(this.viewLifecycleOwner) {
-            adapter.removeLoadingView()
-            if (!it.isCached && adapter.itemCount > 0) {
-                adapter.addList(it.photoListResponse)
-            } else {
-                adapter.replaceList(it.photoListResponse)
+            if (!it.isCached) {
+                adapter.removeLoadingView()
             }
-            scrollListener.setLoaded()
+            if (adapter.haveCachedData) {
+                adapter.replaceList(it.photoListResponse)
+            } else {
+                adapter.addList(it.photoListResponse, it.isCached)
+            }
             adapter.notifyItemChanged(adapter.itemCount)
+            scrollListener.setLoaded()
         }
         viewModel.loadCacheIfExist(1, PER_PAGE)
         loadMore()
